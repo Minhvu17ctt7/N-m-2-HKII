@@ -1,0 +1,562 @@
+.data
+file_input: .asciiz "input.txt"	      #ten file lay nhap du lieu
+file_prefix: .asciiz "prefix.txt"     #ten file in ra ket qua hau to
+file_postfix: .asciiz "posfix.txt"    # tên file in ra ket qua hau to
+file_result: .asciiz "result.txt"     # ten file inra ra ket qua tinh tu postfix
+infix: .space 256   #khoi tao chua cong thuc trung to
+prefix:
+postfix: .space 256 # kh?i t?o ?? ch?a bi?u th?c h?u t?/ti?n t?
+stack: .space 256   #khoi tao stack chua cac toan tu 
+temp: .space 100
+result: .space 100
+xuongdong: .asciiz "\n"   #ki tu xuong dong 
+ketthuc: .asciiz "\0"
+.text
+.globl main
+main:
+# mo file 
+     li $v0, 13 #gan $v0 = 13 tuong ung voi mo file
+     la $a0, file_input #gan dai chi ten file input vao $a0
+     li $a1 , 0 #mo file chi doc
+     li $a2 , 0
+     syscall #thuc hien lenh
+     addi $sp, $sp, -4 # khai bao kich thuoc stack can dung la 4 yte
+      sw $v0, 0($sp)
+     
+          #Doc file
+      li $v0, 14 #gan $v0 = 14 tuong ung voi doc file
+      lw $a0,0($sp)
+      la $a1, infix #luu dia chi bien de nhap chuoi
+      li $a2, 256 # so ki tu toi da co the doc
+      syscall #thuc hien lenh
+   
+      # mo file 
+     li $v0, 13 #gan $v0 = 13 tuong ung voi mo file
+     la $a0, file_postfix #gan dai chi ten file input vao $a0
+     li $a1 , 1 #mo file chi viet
+     li $a2 , 0
+     syscall #thuc hien lenh
+      addi $sp, $sp, -4 # khai bao kich thuoc stack can dung la 4 yte
+      sw $v0, 0($sp)
+    
+      # mo file 
+     li $v0, 13 #gan $v0 = 13 tuong ung voi mo file
+     la $a0, file_result #gan dai chi ten file input vao $a0
+     li $a1 , 1 #mo file chi viet
+     li $a2 , 0
+     syscall #thuc hien lenh
+     addi $sp, $sp, -4 # khai bao kich thuoc stack can dung la 4 yte
+      sw $v0, 0($sp)
+      # mo file 
+     li $v0, 13 #gan $v0 = 13 tuong ung voi mo file
+     la $a0, file_prefix #gan dai chi ten file input vao $a0
+     li $a1 , 1 #mo file chi viet
+     li $a2 , 0
+     syscall #thuc hien lenh
+     addi $sp, $sp, -4 # khai bao kich thuoc stack can dung la 4 yte
+      sw $v0, 0($sp)
+
+
+      la $s1,infix # nguoc lai, luu dia chi infix vao $s3
+      li $s0,0
+
+
+_postfix: #vòng while  trong file
+      addi $sp, $sp, -4 # khai bao kich thuoc stack can dung la 4 yte
+      sw $ra, 0($sp)   #luu dai chi vao stack
+      li $s3,0  #khai bao chi so stack
+      li $s2,0  #khai bao chi so cua postfix
+      #vong while lay tung ki tu trong postfix
+   convert_postfix:
+      la $t1,stack    #luu cdai chi stack vao $t1 de  thuc hien tinh toan
+      la $t2, postfix #luu dia chi posstfix vap $t2
+      lb $t3,0($s1)  #luu ki tu tai vi tri $s1 vao $t3
+      addi $s1,$s1,1 #dia chi infix++
+      beqz $t3,exit_convert  #neu ki tu do = 0 nghia la da het chuoi
+      beq  $t3,13,convert_postfix  #gap ki tu tao dong moi, trong mot so truong hop gap ki  tu nay
+      beq $t3,32,convert_postfix
+      beq $t3,'\n',exit_convert
+      slti $t0,$t3,48  #so sanh be hon 0
+      beqz $t0,push_number # Neu >= '0' thi la so, nhay den label 
+      jal push_operator  # nguoc lai la toan tu 
+      j convert_postfix
+
+   exit_convert:
+       beq $s0,$0,exit_convert_postfix
+exit_convert_prefix:
+    jal pop_all_stack   #khi ket thuc chuoi thì lay tat ca con lai trong stack dua vao postfix
+      li $a1,'\0'   #gan ki tu ket thuc chuoi vao $a1
+      jal push_postfix   #them ki tu ket thuc chuoi vao postfix
+li $v0,4
+      la $a0,postfix
+      syscall
+    li $v0,4
+      la $a0,xuongdong
+      syscall
+ lw $ra,0($sp)      # luu l?i dia chi file can dong
+        addi $sp,$sp,4
+     jr $ra
+    ##########################
+   exit_convert_postfix:
+        lw $ra,0($sp)      # luu l?i dia chi file can dong
+        addi $sp,$sp,4
+      jal pop_all_stack   #khi ket thuc chuoi thì lay tat ca con lai trong stack dua vao postfix
+      li $a1,'\0'   #gan ki tu ket thuc chuoi vao $a1
+      jal push_postfix   #them ki tu ket thuc chuoi vao postfix
+      li $v0,4
+      la $a0,postfix
+      syscall
+      addi $sp, $sp, -4 # khai bao kich thuoc stack can dung la 4 yte
+      sw $t3, 0($sp)     
+      addi $sp, $sp, -4 # khai bao kich thuoc stack can dung la 4 yte
+      sw $s1, 0($sp)
+      jal result_postfix
+              li $v0,4
+      la $a0,xuongdong
+      syscall
+      jal print_file_postfix
+      lw $s1,0($sp) #khoi phuc dia chi quay ve
+      addi $sp, $sp, 4 #khoi phuc lai $sp
+      lw $t3,0($sp) #khoi phuc dia chi quay ve
+      addi $sp, $sp, 4 #khoi phuc lai $sp
+       beqz $t3,PREFIX  #neu ki tu do = 0 nghia la da het chuoi
+      j _postfix
+
+
+push_number:
+
+      move $a1,$t3 # $a1=$t3
+      jal push_postfix  # them $t3 vao postfix
+      j convert_postfix  #nhay ve label convert_postfix de tiep tuc voi ki tu tiep theo
+
+push_operator:
+       move $a1,$t3  # $a1=$t3
+      beq  $t3,'(',push_stack  #neu toan tu là '(', them vao stack
+      addi $sp, $sp, -4 # khai bao kich thuoc stack can dung la 4 yte
+      sw $ra, 0($sp)   #luu dai chi vao stack
+     #ki tu ' ' de cach giua ki tu la toan tu va ki  tu la toan hang
+      li $a1,' '  #gan $a1 = ' '
+      jal push_postfix  #them ki tu ' ' vao postfix
+      lw $ra,0($sp) #khoi phuc dia chi quay ve
+      addi $sp, $sp, 4 #khoi phuc lai $sp
+      move $a1,$t3  # $a1=$t3
+      beqz $s3,push_stack  #neu stack rong, them toan tu vao stack
+      beq  $t3,'/',push_stack  # Neu toan tu la '/', them vao stack (vi theo su uu tien toan tu thi * / lon hon)
+      beq  $t3,'*',push_stack  # Neu toan tu la '*', them vao stack (vi theo su uu tien toan tu thi * / lon hon)
+      beq  $t3,')',case1   #neu la ki tu ')'
+      j case2  # nguoc la la toan tu '+' hoac '-' ta nhay den label case2
+      case1:  #truong hop toan tu la ')', lay het trong stack cho den khi gap '('
+            addi $sp, $sp, -4 # khai bao kich thuoc stack can dung la 4 yte
+            sw $ra, 0($sp)   #luu dai chi vao stack
+         while_case1: 
+           jal pop_stack   #nhay den pop_stack vao luu lai ?ia chi vao $ra
+           beq $v0,'(',exit_while_case1
+           move $a1,$v0   #luu gia tri tra ve tu pop_stack
+           jal push_postfix   #dua toan hang vao postfix
+           #ki tu ' ' de cach giua ki tu la toan tu va ki  tu la toan hang
+           li $a1,' '  #gan $a1 = ' '
+           jal push_postfix  #them ki tu ' ' vao postfix
+           j while_case1
+         exit_while_case1:
+            lw $ra,0($sp) #khoi phuc dia chi quay ve
+            addi $sp, $sp, 4 #khoi phuc lai $sp 
+            jr $ra
+      case2: #truong hop toan tu la +, ta kiem tra xem ki dinh stack la toan tu nao
+           la $t1, stack #luu dia chi posstfix vap $t2
+           addi $s3,$s3,-1  #$s2--
+           add $t1,$t1,$s3  # dia chi stack + chi so
+           lb $t5,0($t1)    #luu ki tu tai n-1 vao $t5
+           addi $s3,$s3,1  #$s2
+           add $t1,$t1,$s3  # dia chi stack + chi so
+           # 2 dong tren de tra lai dia chi va index ban dau
+           
+           beq $t5,'+',push_stack #neu dinh stack la '+' thi dua toan tu vao stack
+           beq $t5,'-',push_stack  #neu dinh stack la '-' thi dua toan tu vao stack
+           beq $t5,'(',push_stack  #neu dinh stack la '(' thi dua toan tu vao stack
+           #neu khong nam trong truong hop tren, thi toan tu o dinh la * hoac /
+           #luc nay ta lay toan tu o dinh ra dua vao postfix va dua $t3 vao dinh stack
+           addi $sp, $sp, -4 # khai bao kich thuoc stack can dung la 4 yte
+           sw $ra, 0($sp)   #luu dai chi vao stack
+           jal pop_stack  #lay taon tu dinh stack
+           move $a1,$v0    #luu ket qua tra ve vao $a1
+           jal push_postfix  # dua toan tu vua nhan duoc vao postfix
+           move $a1,$t3      #luu toan tu vao $a1
+           jal push_stack   #dua toan tu vao dinh stack
+
+           #ki tu ' ' de cach giua ki tu la toan tu va ki  tu la toan hang
+           li $a1,' '  #gan $a1 = ' '
+           jal push_postfix  #them ki tu ' ' vao postfix
+           lw $ra,0($sp) #khoi phuc dia chi quay ve
+           addi $sp, $sp, 4 #khoi phuc lai $sp
+           jr $ra
+     
+push_stack:
+      la $t1,stack    #luu cdai chi stack vao $t1 de  thuc hien tinh toan
+      add $t1,$t1,$s3   #tang chi so 
+      sb $a1,0($t1)    # luu ki tu vao chi so ( stack[$s3] = $a0
+      addi $s3,$s3,1     #$s3++
+      jr $ra            #nhay ve dia chi luu trong $ra
+
+pop_stack:
+      la $t1,stack    #luu cdai chi stack vao $t1 de  thuc hien tinh toan
+      addi $s3,$s3,-1  #$s3--
+      add $t1,$t1,$s3  # dia chi stack + chi so
+      lb $v0,0($t1)    #luu ki tu tai n-1 vao $v0
+      jr $ra         #nhay ve dia chi luu trong $ra
+
+push_postfix:
+      la $t2, postfix #luu dia chi posstfix vap $t2
+      add $t2,$t2,$s2   #tang chi so 
+      sb $a1,0($t2)    # luu ki tu vao chi so ( postfix[$s3] = $a0
+      addi $s2,$s2,1     #$s2++
+      jr $ra            #nhay ve dia chi luu trong $ra
+
+pop_postfix:
+      la $t2, postfix #luu dia chi posstfix vap $t2
+      addi $s2,$s2,-1  #$s2--
+      add $t2,$t2,$s2  # dia chi stack + chi so
+      lb $v0,0($t2)    #luu ki tu tai n-1 vao $v0
+      jr $ra         #nhay ve dia chi luu trong $ra
+
+pop_all_stack: 
+         addi $sp, $sp, -4 # khai bao kich thuoc stack can dung la 4 yte
+         sw $ra, 0($sp)   #luu dai chi vao stack
+      while_pop_all_stack:
+          #ki tu ' ' de cach giua ki tu la toan tu va ki  tu la toan hang
+          li $a1,' '  #gan $a1 = ' '
+          jal push_postfix  #them ki tu ' ' vao postfix
+          beq $s3,$0,exit_pop_all_stack
+          jal pop_stack   #nhay den pop_stack vao luu lai ?ia chi vao $ra
+          move $a1,$v0   #luu gia tri tra ve tu pop_stack
+          jal push_postfix   #dua toan hang vap postfix
+             #ki tu ' ' de cach giua ki tu la toan tu va ki  tu la toan hang
+           li $a1,' '  #gan $a1 = ' '
+           jal push_postfix  #them ki tu ' ' vao postfix
+          j while_pop_all_stack  #nhay ve vong lap
+      exit_pop_all_stack:
+         lw $ra,0($sp) #khoi phuc dia chi quay ve
+         addi $sp, $sp, 4 #khoi phuc lai $sp
+         jr $ra
+
+print_file_postfix:
+      li $v0, 15 #gan $v0 = 14 tuong ung voi doc file
+      lw $a0,16($sp)
+      la $a1, postfix #luu dia chi bien de nhap chuoi
+      move $a2, $s2 # so ki tu toi da co the doc
+      syscall #thuc hien lenh
+
+      li $v0, 15 #gan $v0 = 14 tuong ung voi doc file
+      lw $a0,16($sp)
+      la $a1, xuongdong #luu dia chi bien de nhap chuoi
+      li $a2, 1 # so ki tu toi da co the doc
+      syscall #thuc hien lenh
+
+     jr $ra
+print_file_result:
+
+li $t3,0
+move $s3,$v0
+
+slti $t0,$s3,0
+bne $t0,$0,negative
+li $t0,0
+convert_int_to_string:
+    la $s1,temp
+    li $t5,10
+    div $s3,$t5
+    mflo $s3
+    mfhi $t1
+    addi $t1,$t1,48  
+    add $s1,$s1,$t3
+    sb $t1,0($s1)
+    addi $t3,$t3,1
+    beq $s3,0,convert
+   j convert_int_to_string
+convert:
+  while2:
+    la $s1,temp
+    la $s3,result
+    addi $t3,$t3,-1
+    add $s1,$s1,$t3
+    add $s3,$s3,$t0
+    addi $t0,$t0,1
+    lb $t2,0($s1)
+    sb $t2,0($s3)
+    beqz $t3,print_result
+    j while2
+
+negative:
+   la $s1,result
+  sub $s3,$0,$s3
+  li $t1,'-'
+  sb $t1,0($s1)
+  li $t0,1
+ j convert_int_to_string
+print_result: 
+       li $v0, 15 #gan $v0 = 14 tuong ung voi doc file
+      lw $a0,12($sp)
+      la $a1, result#luu dia chi bien de nhap chuoi
+      move $a2, $t0 # so ki tu toi da co the doc
+      syscall #thuc hien lenh
+
+      li $v0, 15 #gan $v0 = 14 tuong ung voi doc file
+      lw $a0,12($sp)
+      la $a1, xuongdong#luu dia chi bien de nhap chuoi
+      li $a2, 1 # so ki tu toi da co the doc
+      syscall #thuc hien lenh
+
+  jr $ra
+
+result_postfix:
+addi $sp, $sp, -4 # khai bao kich thuoc stack can dung la 4 yte
+sw $ra, 0($sp)   #luu dai chi vao stack
+li $s4,0  #$s4=0 
+li $s6,0   #s6=0
+result2:
+     la $s1,postfix    #luu dia chi hau to vao $s1 de thuc hien tinih toan
+     add $s1,$s1,$s6   #tang dia chi 
+     addi $s6,$s6,1    #tang index 
+     lb $t3,0($s1)     #lay ki tu tai index $s6
+     beq $t3,' ' ,result2    #neu ki tu la' ' thi bo qua
+    beqz $t3,exit_result   #neu ki tu la 0 thi t ket thuc( 0 la ki tu ket thuc chuoi)
+    beq $t3,'\n',exit_result  #neu ki tu la '\n' ta cung ket thuc 
+     slti $t0,$t3,48  #so sanh be hon 0
+     beqz $t0,push_number_result # Neu >= '0' thi la so, nhay den label 
+     j operator  #neu la toan tu thi nhay den label operator
+
+exit_result:
+     jal pop_stack_sp #lay ket qua tu stack
+    lw $ra,0($sp) #khoi phuc dia chi quay ve
+    addi $sp, $sp, 4 #khoi phuc lai $sp
+    j print_file_result  #nhay ve dia chia nam trong $ra
+ push_number_result:
+        addi $t3,$t3,-48  # atoi, chuyen ki tu ve dang so
+        move $s4,$t3   #$s4=$t3
+       while1:
+            la $s1,postfix #luu lai dia chi postfix
+            add $s1,$s1,$s6 #tang dia chi (nhay den dia chi co index la $s6)
+            addi $s6,$s6,1 #tang index
+            lb $t3,0($s1) #luu ki tu tai vi tri $s6
+            beq $t3,' ',exit_push_number_result  #neu ki tu do la ' ' thi het mot so ta nhay den label 
+            addi $t3,$t3,-48  #nguoc lai,thi do la ki tu so, ta atoi ki tu do
+            li $t5,10    
+            mul $s4,$s4,$t5   #ta nhan $s4 cho 10 roi cng voi ki tu so vua nhan duoc
+            add $s4,$s4,$t3   #day la thao tac chuyen chuoi ve int
+            j while1  #nhay ve label while1
+exit_push_number_result:
+     move $a1,$s4  #ta dua so vua chuyen duoc vao stack
+    jal push_stack_sp
+    j result2    #nhay ve label result
+
+operator:
+     jal pop_stack_sp  #neu la toan tu thi ta la 2 so tren cung cua stack
+     move $t8,$v0  # luu so  thu nhat cao $t8
+     jal pop_stack_sp
+     move $t9,$v0   #luu so thu 2 vao $t9
+    #kiem tra xem do ta phep tinh gi?
+     beq $t3,'+',case_1  
+     beq $t3,'-',case_2
+     beq $t3,'*',case_3
+     beq $t3,'/',case_4
+     case_1: #neu la '+' thi ta cong hay so lai,luu vao $s4
+      add $s4,$t9,$t8
+      j exit_operator
+      case_2: #neu la '-' thi ta lay so duoi tru so tren ,luu vao $s4
+      sub $s4,$t9,$t8
+      j exit_operator
+       case_3: #neu la '*' thi ta nhan hay so lai,luu vao $s4
+      mul $s4,$t9,$t8
+       j exit_operator
+      case_4: #neu la '/' thi ta lay so duoi chia so tren
+      div $t9,$t8
+       mflo $s4 #lay phan nguyen
+exit_operator:
+    move $a1,$s4  #luu ket qua vua moi timf duoc vao stack 
+   jal push_stack_sp
+   j result2 #nhay ve lai label resutl
+push_stack_sp:
+    addi $sp, $sp, -4 # khai báo kích thuc stack can dùng = 4 byte
+    sw $a1,0($sp)   #luu $a1 vap $sp
+      jr $ra            #nhay ve dia chi luu trong $ra
+pop_stack_sp:
+      lw $v0,0($sp)    #luu ki tu tai stack vao $v0
+      addi $sp, $sp, 4  #tra lai 4 byte cho stack
+      jr $ra         #nhay ve dia chi luu trong $ra
+
+#####################
+PREFIX:
+la $s1,infix
+li $t1,0
+_prefix:
+   la $s2, temp #luu dia chi posstfix vap $t2
+   lb $t3,0($s1)  #luu ki tu tai vi tri $s1 vao $t3
+   addi $s1,$s1,1 #dia chi infix++
+   beqz $t3,exit_prefix  #neu ki tu do = 0 nghia la da het chuoi
+   beq  $t3,13,_prefix  #gap ki tu tao dong moi, trong mot so truong hop gap ki  tu nay
+   beqz $t3,exit_prefix
+   beq $t3,'\n',exit_prefix
+   add $s2,$s2,$t1
+   sb $t3,0($s2)
+   addi $t1,$t1,1
+j _prefix
+
+
+exit_prefix: 
+   la $s2, temp #luu dia chi posstfix vap $t2
+   li $a1,'\0'
+   add $s2,$s2,$t1
+   sb $a1,0($s2)
+   li $v0,4
+   la $a0,temp
+   syscall
+   li $v0,4
+   la $a0,xuongdong
+   syscall
+addi $sp, $sp, -4 # khai bao kich thuoc stack can dung la 4 yte
+   sw $t3, 0($sp)   #luu dai chi vao stack
+ addi $sp, $sp, -4 # khai bao kich thuoc stack can dung la 4 yte
+  sw $s1, 0($sp)   #luu dai chi vao stack
+la $a2,temp
+addi $a0,$t1,-1
+
+  jal reverse
+ la $s1,prefix # nguoc lai, luu dia chi infix vao $s3
+   li $s0,1
+jal _postfix
+
+jal print_prefix
+  lw $s1,0($sp)      # luu l?i dia chi file can dong
+addi $sp,$sp,4
+  lw $t3,0($sp)      # luu l?i dia chi file can dong
+addi $sp,$sp,4
+   beqz $t3,exit
+   li $t1,0 
+   j _prefix
+
+
+reverse:
+addi $sp, $sp, -4 # khai bao kich thuoc stack can dung la 4 yte
+ sw $ra, 0($sp)   #luu dai chi vao stack
+la $s2,0
+
+reverse_string:
+    slti $t0,$a0,0
+    bne $t0,$0,exit_reverse_string
+    la $s1,($a2)
+    add $s1,$s1,$a0
+     addi $a0,$a0,-1
+    lb $t3,0($s1)
+    beqz $t3,exit_reverse_string
+    beq $t3,'\n',exit_reverse_string
+    slti $t0,$t3,48
+    addi $t8,$a0,1
+     beq $t0,$0,reverse_number
+     beq $t3,')',reverse_opearator
+     beq $t3,'(',reverse_opearator
+     move $a1,$t3
+     jal push_prefix
+     j reverse_string
+reverse_number:
+     add $t9,$a0,1
+     slti $t0,$a0,0
+     bne $t0,$0,reverse_number_2
+     la $s1,($a2)
+     add $s1,$s1,$a0
+     lb $t3,0($s1)
+     slti $t0,$t3,48
+     bne $t0,$0,reverse_number_2
+     addi $a0,$a0,-1
+    j reverse_number
+
+reverse_number_2:
+   la $s1,($a2)
+    add $s1,$s1,$t9
+    lb $t3,0($s1)
+    move $a1,$t3
+   jal push_prefix
+     addi $t9,$t9,1
+    slt $t0,$t8,$t9
+    bne $t0,$0,reverse_string
+   j reverse_number_2
+
+
+ reverse_opearator:
+   beq $t3,')',case_1_
+   beq $t3,'(',case_2_
+   case_1_:
+    li $a1,'('
+    jal push_prefix
+    j  reverse_string
+    case_2_:
+    li $a1,')'
+    jal push_prefix
+    j  reverse_string
+   
+
+
+exit_reverse_string:
+     li $a1,'\0'
+   jal push_prefix
+   la $a0,prefix
+   li $v0,4
+   syscall
+    li $v0,4
+      la $a0,xuongdong
+      syscall
+  lw $ra,0($sp)      # luu l?i dia chi file can dong
+addi $sp,$sp,4
+jr $ra
+
+push_prefix:
+      
+      la $t2, prefix  # dia chi posstfix vap $t2
+      add $t2,$t2,$s2   #tang chi so 
+      sb $a1,0($t2)    # luu ki tu vao chi so ( postfix[$s3] = $a0
+      addi $s2,$s2,1     #$s2++
+      jr $ra            #nhay ve dia chi luu trong $ra
+
+print_prefix:
+    addi $sp, $sp, -4 # khai bao kich thuoc stack can dung la 4 yte
+     sw $ra, 0($sp)   #luu dai chi vao stack
+    la $a2,postfix
+    addi $a0,$s2,-2
+   jal reverse
+
+       li $v0, 15 #gan $v0 = 14 tuong ung voi doc file
+      lw $a0,4($sp)
+      la $a1, result#luu dia chi bien de nhap chuoi
+      move $a2, $t0 # so ki tu toi da co the doc
+      syscall #thuc hien lenh
+
+      li $v0, 15 #gan $v0 = 14 tuong ung voi doc file
+      lw $a0,4($sp)
+      la $a1, xuongdong#luu dia chi bien de nhap chuoi
+      li $a2, 1 # so ki tu toi da co the doc
+      syscall #thuc hien lenh
+
+
+   lw $ra,0($sp)      # luu l?i dia chi file can dong
+addi $sp,$sp,4
+      jr $ra            #nhay ve dia chi luu trong $ra
+
+#####################################
+
+exit:
+li   $v0, 16       #gan $v0 = 16 tuong ung voi dong file
+lw $a0,0($sp)      # luu l?i dia chi file can dong
+addi $sp,$sp,4
+syscall
+li   $v0, 16       #gan $v0 = 16 tuong ung voi dong file
+lw $a0,0($sp)      # luu l?i dia chi file can dong
+addi $sp,$sp,4
+syscall 
+li   $v0, 16       #gan $v0 = 16 tuong ung voi dong file
+lw $a0,0($sp)      # luu l?i dia chi file can dong
+addi $sp,$sp,4
+syscall   
+li   $v0, 16       #gan $v0 = 16 tuong ung voi dong file
+lw $a0,0($sp)      # luu l?i dia chi file can dong
+addi $sp,$sp,4
+syscall      
+li $v0, 10        #gan $v0 = 10 tuong ung voi ket thuc
+syscall
